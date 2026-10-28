@@ -62,6 +62,12 @@ jobs:
         with:
           name: rendered
           path: dist
+      - uses: actions/setup-envtest@v2
+        id: envtest
+        with:
+          version-regexp: '1\.31'
       - name: envtest conformance (apiserver = conformance)
+        env:
+          KUBEBUILDER_ASSETS: ${{ steps.envtest.outputs.kubebuilder-assets }}
         run: |
           go run ./hack/conformance.go -crds kernel/chart/crds -objects dist/dev,dist/prod
