@@ -1,0 +1,21 @@
+# AgentProfile (ADR-0011 amendment 2026-10-26, three-tier phase 1a): the dev
+# environment's agentic decision surface. The kernel reads it; nothing in the
+# cluster writes it. The profile's model window resolves to the SAME model
+# dev's pr-review template already pins — the phase-1a dev verification is
+# the PATH (worker logs name the profile), not a model flip. A model change
+# here is a one-line window edit, no kernel train.
+apiVersion: harmostes.dev/v1alpha1
+kind: AgentProfile
+metadata:
+  name: default
+  namespace: harmostes-dev
+  labels:
+    app.kubernetes.io/name: harmostes
+    app.kubernetes.io/component: agent-profile
+spec:
+  compatibility: "kernel >=1.4.0"
+  models:
+    - model: litellm/mtplx/anthropic/qwen38-27b-optimized-speed-fp16
+      start: "00:00"
+      end: "23:59"
+      tz: UTC

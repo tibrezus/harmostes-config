@@ -1,0 +1,5 @@
+# The base is deliberately near-empty: harmostes config is env-scoped by
+# construction (profiles name models per environment; instances bind
+# per-environment templates and secrets). Shared objects would be an
+# abstraction looking for a second user.
+resources: []

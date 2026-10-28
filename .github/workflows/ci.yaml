@@ -1,0 +1,64 @@
+# The config tier's gates: the apiserver is the conformance surface
+# (ADR-0011 amendment). Every PR's overlays must (1) parse as multi-doc
+# YAML, (2) kustomize-build green, (3) apply cleanly to an envtest
+# apiserver carrying the CRDs of a PINNED kernel chart release — unknown
+# fields, bad enums, and violated patterns fail the merge, not a cluster.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  # The pinned kernel chart whose CRDs define conformance. Bumped when a
+  # config change needs a newer field (the SKILLS_BUMP pattern: one line).
+  KERNEL_CHART: "1.9.1"
+  KUBEBUILDER_ASSETS: /usr/local/kubebuilder/bin
+
+jobs:
+  parse-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: multi-doc YAML parse gate (!288)
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            python3 - "$f" <<'PY' || fail=1
+          import sys, yaml
+          docs = list(yaml.safe_load_all(open(sys.argv[1])))
+          assert any(d is not None for d in docs), "file parses to nothing"
+          PY
+          done < <(find . -name '*.yaml' -o -name '*.yml' | grep -v '^\./\.github')
+          exit $fail
+      - uses: azure/setup-helm@v4
+      - name: kustomize build (both overlays)
+        run: |
+          mkdir -p dist/dev dist/prod
+          kubectl kustomize overlays/dev > dist/dev/rendered.yaml
+          kubectl kustomize overlays/prod > dist/prod/rendered.yaml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rendered
+          path: dist/
+
+  conformance:
+    runs-on: ubuntu-latest
+    needs: parse-and-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: azure/setup-helm@v4
+      - name: pull the pinned chart's CRDs
+        run: |
+          helm pull oci://ghcr.io/tibrezus/harmostes --version "$KERNEL_CHART" --untar --untardir /tmp/chart
+          ls /tmp/chart/harmostes/crds/
+      - uses: actions/download-artifact@v4
+        with:
+          name: rendered
+          path: dist
+      - name: envtest conformance (apiserver = conformance)
+        run: |
+          go run ./hack/conformance.go -crds /tmp/chart/harmostes/crds -objects dist/dev,dist/prod
