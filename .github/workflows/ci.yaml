@@ -66,7 +66,8 @@ jobs:
         run: |
           grep -oE '"controller-tools"[^}]*' go.mod || true
           mkdir -p /usr/local/kubebuilder/bin
-          curl -sL --retry 5 --retry-all-errors "https://github.com/kubernetes-sigs/controller-tools/releases/download/envtest-v1.31.0/envtest-v1.31.0-linux-amd64.tar.gz" | tar -xz -C /usr/local/kubebuilder/bin --strip-components=1 bin/etcd bin/kube-apiserver bin/kubectl
+          curl -sL --retry 5 --retry-all-errors "https://github.com/kubernetes-sigs/controller-tools/releases/download/envtest-v1.31.0/envtest-v1.31.0-linux-amd64.tar.gz" | tar -xz -C /tmp
+          mv /tmp/controller-tools/envtest/* /usr/local/kubebuilder/bin/
           ls /usr/local/kubebuilder/bin/
       - name: envtest conformance (apiserver = conformance)
         run: |
