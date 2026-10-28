@@ -65,7 +65,7 @@ jobs:
       - name: install the envtest control plane (controller-tools release; the runner ships none)
         run: |
           grep -oE '"controller-tools"[^}]*' go.mod || true
-          mkdir -p /usr/local/kubebuilder/bin
+          sudo mkdir -p /usr/local/kubebuilder/bin && sudo chown -R "$USER" /usr/local/kubebuilder
           curl -sL --retry 5 --retry-all-errors "https://github.com/kubernetes-sigs/controller-tools/releases/download/envtest-v1.31.0/envtest-v1.31.0-linux-amd64.tar.gz" | tar -xz -C /tmp
           mv /tmp/controller-tools/envtest/* /usr/local/kubebuilder/bin/
           ls /usr/local/kubebuilder/bin/
