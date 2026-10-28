@@ -62,12 +62,12 @@ jobs:
         with:
           name: rendered
           path: dist
-      - uses: actions/setup-envtest@v2
-        id: envtest
-        with:
-          version-regexp: '1\.31'
+      - name: install the envtest control plane (controller-tools release; the runner ships none)
+        run: |
+          grep -oE '"controller-tools"[^}]*' go.mod || true
+          mkdir -p /usr/local/kubebuilder/bin
+          curl -sL --retry 5 --retry-all-errors "https://github.com/kubernetes-sigs/controller-tools/releases/download/envtest-v1.31.0/envtest-v1.31.0-linux-amd64.tar.gz" | tar -xz -C /usr/local/kubebuilder/bin --strip-components=1 bin/etcd bin/kube-apiserver bin/kubectl
+          ls /usr/local/kubebuilder/bin/
       - name: envtest conformance (apiserver = conformance)
-        env:
-          KUBEBUILDER_ASSETS: ${{ steps.envtest.outputs.kubebuilder-assets }}
         run: |
           go run ./hack/conformance.go -crds kernel/chart/crds -objects dist/dev,dist/prod
