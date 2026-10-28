@@ -50,15 +50,18 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - uses: azure/setup-helm@v4
-      - name: pull the pinned chart's CRDs
-        run: |
-          helm pull oci://ghcr.io/tibrezus/harmostes --version "$KERNEL_CHART" --untar --untardir /tmp/chart
-          ls /tmp/chart/harmostes/crds/
+      - name: checkout the kernel at the pinned tag (public repo; the chart packages chart/crds verbatim)
+        uses: actions/checkout@v4
+        with:
+          repository: tibrezus/harmostes
+          ref: v${{ env.KERNEL_CHART }}
+          path: kernel
+      - name: locate the CRDs
+        run: ls kernel/chart/crds/
       - uses: actions/download-artifact@v4
         with:
           name: rendered
           path: dist
       - name: envtest conformance (apiserver = conformance)
         run: |
-          go run ./hack/conformance.go -crds /tmp/chart/harmostes/crds -objects dist/dev,dist/prod
+          go run ./hack/conformance.go -crds kernel/chart/crds -objects dist/dev,dist/prod
