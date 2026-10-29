@@ -1,0 +1,18 @@
+# The PROD AgentProfile (three-tier phase 3: the config tier owns the
+# deployment's agentic decisions). The model window is carried VERBATIM
+# from the pr-review HelmRelease values at the flip (owner directive
+# 2026-10-29: glm-5.3-flash day AND night — outside the window the
+# resolver falls to worker.agentModel, the SAME model by directive, so
+# the net behavior is unchanged).
+apiVersion: harmostes.dev/v1alpha1
+kind: AgentProfile
+metadata:
+  name: default
+  namespace: harmostes
+spec:
+  compatibility: "kernel >=1.4.0"
+  models:
+    - model: litellm/zai/anthropic/glm-5.3-flash
+      start: "22:00"
+      end: "08:00"
+      tz: Asia/Shanghai

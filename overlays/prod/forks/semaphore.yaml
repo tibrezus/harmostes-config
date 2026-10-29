@@ -1,0 +1,63 @@
+# Fork definition for semaphore (rezuscloud/semaphore-monorepo) —
+# consumed by sync-fork.sh (harmostes fork-maintenance engine).
+# Onboarded 2026-10-03 at upstream v2.19.14.
+#
+# Track the STABLE line, not develop: upstream cuts v2.19.x tags on
+# 2-19-stable (develop has diverged from the tag line by 600+
+# commits), so every sync lands on tagged releases. The fork starts
+# as a clean mirror of the release line plus the fork-maintenance
+# wiring itself (upstream-mirror + release workflows) — no feature
+# patches yet. Branch-per-major: the 2.20 line will get a NEW
+# release branch (rezus/2-20), it never rebases this one.
+name: semaphore
+
+upstream:
+  url: https://github.com/semaphoreui/semaphore
+  branch: 2-19-stable
+
+fork:
+  url: https://github.com/rezuscloud/semaphore-monorepo
+  default_branch: rezus/2-19                   # release branch — GitHub default, always functional
+  mirror_branch: rezus/mirror-2-19-stable      # clean upstream mirror (upstream-mirror.yml force-moves it)
+  platform: github
+  token_env: GITHUB_TOKEN
+
+versioning:
+  tag_pattern: "v*-rezus.*"
+  upstream_pattern: "v2.19.*"   # identity = highest v2.19.* release reachable from rezus/2-19
+
+# No feature patches yet. First Rezus patch goes here with a
+# grep-verifiable signature (see signoz/dapr examples above).
+# patches: []
+
+additive_paths:
+  - .github/workflows/upstream-mirror.yml
+  - .github/workflows/release.yml
+
+release:
+  dockerfiles:
+    - deployment/docker/server/Dockerfile
+    - deployment/docker/runner/Dockerfile
+  multi_arch: [linux/amd64]
+  image_registry: ghcr.io/rezuscloud/semaphore
+  # release.yml replicates upstream community_release.yml: besides
+  # these images, GoReleaser publishes binaries + deb/rpm packages
+  # as GitHub Release assets (unsigned until a rezus GPG key
+  # exists). build_cli/version_file stay false: the engine never
+  # builds binaries itself.
+  build_cli: false
+  version_file: false
+
+validation:
+  toolchain:
+    go: "1.26.4"                # go.mod directive
+  go_build:
+    - module: .
+      packages: [./cli/...]     # server entrypoint; no frontend embed
+
+# Conservative start: green sync PRs wait for human review + merge,
+# and no release tag is cut automatically. Flip to merge: true
+# (+ release: true) once the first syncs have proven green.
+auto:
+  merge: false
+  release: false

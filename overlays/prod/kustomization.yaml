@@ -1,7 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: harmostes
-# The prod overlay lands ONLY after the dev overlay is live-verified
-# (windows resolve, instances dispatch) — the dev-first rule. Until then
-# prod's config is delivered by k8s-config (pre-three-tier).
-resources: []
+# The PROD overlay (three-tier phase 3 flips): the deployment's agentic
+# decisions — the AgentProfile (model windows, live since 1.5.0) and the
+# fork DEFS (per-env DATA; the engine payload is CODE and comes from the
+# template repo tibrezus/harmostes-template-fork-maintenance, whose
+# Kustomization renders the scripts/checks/hooks/skill ConfigMaps).
+# Defs are byte-carried from the HelmRelease values at the flip.
+resources:
+  - agentprofile.yaml
+generatorOptions:
+  disableNameSuffixHash: true   # fork-maintenance-defs: the pool mounts a STATIC name
+configMapGenerator:
+  - name: fork-maintenance-defs
+    files:
+      - dapr.yaml=forks/dapr.yaml
+      - forgejo.yaml=forks/forgejo.yaml
+      - semaphore.yaml=forks/semaphore.yaml
+      - signoz.yaml=forks/signoz.yaml

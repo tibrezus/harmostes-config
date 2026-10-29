@@ -1,0 +1,84 @@
+# Fork definition for Dapr — consumed by sync-fork.sh (harmostes
+# fork-maintenance engine).
+name: dapr
+
+upstream:
+  url: https://github.com/dapr/dapr
+  branch: master
+  # dapr cuts releases on release-1.NN branches that are NEVER
+  # merged back to master (master diverged 164 commits from
+  # v1.18.4). #627 exact identity mapping: these lines are merged
+  # by the engine's tag phase so their tags are claimable —
+  # without them the identity anchors at the last release ever
+  # merged into master (observed: fork stuck at v1.18.0 while
+  # upstream shipped 1.18.1..1.18.4).
+  release_refs:
+    - release-1.18
+
+fork:
+  url: https://github.com/rezuscloud/dapr
+  default_branch: rezus/master   # dapr's upstream default is 'master', not 'main'
+  mirror_branch: master
+  platform: github          # github | forgejo — where the fork repo lives
+  token_env: GITHUB_TOKEN   # env var holding the host PAT
+
+versioning:
+  tag_pattern: "v*-rezus.*"
+
+patches:
+  - file: charts/dapr/crds/configuration.yaml
+    description: "observability section in DaprConfiguration CRD"
+    signature: "otel:"
+  - file: go.mod
+    description: "OTel OpenCensus bridge dependency (enables OTLP metrics push)"
+    signature: "go.opentelemetry.io/otel/bridge/opencensus"
+  - file: pkg/config/configuration.go
+    description: "parse observability config from DaprConfiguration"
+    signature: "ObservabilitySpec"
+  - file: pkg/metrics/exporter.go
+    description: "OTLP exporter bridge for OpenCensus metrics"
+    signature: "otlpOpts"
+  - file: pkg/runtime/config.go
+    description: "wire OTLP observability into Dapr runtime startup"
+    signature: "ApplyObservabilitySpec"
+
+additive_paths:
+  - pkg/logs/otlp_bridge.go
+  - pkg/logs/otlp_bridge_test.go
+  - pkg/metrics/otlp_bridge.go
+  - pkg/metrics/otlp_bridge_test.go
+  - pkg/otel/helpers.go
+  - pkg/otel/helpers_test.go
+
+post_merge_hook: post-merge-hooks/dapr.sh
+
+release:
+  dockerfiles: [docker/Dockerfile]   # dapr's Dockerfile lives under docker/
+  multi_arch: [linux/amd64, linux/arm64]
+  image_registry: ghcr.io/rezuscloud/daprd
+  build_cli: false
+  version_file: false
+
+# Full automation: when a sync passes every gate (clean path or
+# agent-resolved conflict), merge immediately + cut the next -rezus.N
+# tag. The fork's release.yml builds the multi-arch daprd image; Flux's
+# ImagePolicy (dapr-sidecar) then rolls it into every Dapr-enabled app.
+auto:
+  merge: true
+  release: true
+
+# Validation (per-fork, declarative). Dapr is a single-module Go
+# project — build the runtime entrypoint. No codegen, no integration.
+validation:
+  go_build:
+    - module: .
+      packages: [./cmd/daprd]   # upstream renamed cmd/dapr -> cmd/daprd
+  go_test:
+    # Behavioral gate (harmostes#564): every feature this fork adds
+    # (otlp bridges, otel helpers) carries its own tests on additive
+    # paths — run them so a semantic upstream merge that greps clean
+    # and compiles still fails the gate when behavior breaks.
+    # Explicit packages only (the validator rejects a forgotten key
+    # instead of silently running ./...), bounded at the 120s default.
+    - module: .
+      packages: [./pkg/metrics, ./pkg/logs, ./pkg/otel]
