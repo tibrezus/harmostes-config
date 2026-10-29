@@ -63,6 +63,13 @@ func docsOf(path string) ([][]byte, error) {
 	return docs, nil
 }
 
+// allowedPlainConfigMaps: plain ConfigMaps the config tier may carry, by
+// exact name. Each entry names its consumer so the allowlist stays honest —
+// adding one is a deliberate act, never a pattern match.
+var allowedPlainConfigMaps = map[string]string{
+	"fork-maintenance-defs": "per-env fork DEFINITIONS — the fork-maintenance engine mounts /workspace/forks (pool volume, static name)",
+}
+
 func main() {
 	crdDir := flag.String("crds", "", "directory of CRD yamls")
 	dirsList := flag.String("objects", "", "comma-separated directories of rendered objects")
@@ -184,9 +191,21 @@ func main() {
 			u := &unstructured.Unstructured{Object: obj}
 			gv, _ := schema.ParseGroupVersion(u.GetAPIVersion())
 			if gv.Group != "harmostes.dev" {
-				fmt.Fprintf(os.Stderr, "FAIL %s doc %d: not a harmostes.dev object (%s) — the config tier carries harmostes CRs only\n", f, i+1, u.GetAPIVersion())
-				failures++
-				continue
+				// Narrow allowlist: plain ConfigMaps that carry per-env DATA an
+				// engine consumes by mount contract (the fork DEFS — key = def
+				// file name, mounted at /workspace/forks by the pool). These are
+				// config-tier content; anything else here is k8s-config sprawl
+				// and stays refused.
+				if u.GetKind() == "ConfigMap" && allowedPlainConfigMaps[u.GetName()] {
+					fmt.Printf("allow %s doc %d: ConfigMap/%s (%s)\n", f, i+1, u.GetName(), allowedPlainConfigMaps[u.GetName()])
+				} else {
+					fmt.Fprintf(os.Stderr, "FAIL %s doc %d: not a harmostes.dev object (%s) — the config tier carries harmostes CRs only\n", f, i+1, u.GetAPIVersion())
+					failures++
+					continue
+				}
+			}
+			if u.GetKind() == "ConfigMap" && gv.Group != "harmostes.dev" {
+				continue // allowlisted data carrier: nothing further to validate
 			}
 			gvr, namespaced, err := gvrFor(u.GetKind())
 			if err != nil {
