@@ -1,0 +1,67 @@
+# Fork definition: forgejo — expressed as the MAPPING TABLE (the
+# whole model). Transport (cutover 2026-09-06): the harmostes ENGINE
+# walks the table (mode: mapping — is-ancestor no-op → no-ff RZ/sync
+# merge → repo-local validation delegate → regen on top → direct push
+# on green; conflicts → one labelled PR). #627 (2026-09-27): tags
+# mirror upstream major.minor.patch exactly, minted per validated
+# sync (release.auto_cut) — the v16.0.3-forever anchor is dead.
+name: forgejo
+mode: mapping
+
+upstream:
+  url: https://codeberg.org/forgejo/forgejo
+
+# Repo-local validation delegate, invoked with the merge-base inside
+# the attempt (worker image carries go1.25; regen output rides on top
+# of the merge).
+validation_command: .github/fork/sync-validate.sh
+
+fork:
+  url: https://github.com/rezuscloud/forgejo-monorepo
+  platform: github
+  token_env: GITHUB_TOKEN
+
+# ── the mapping table ─────────────────────────────────────────────
+mappings:
+  - theirs: v16.0/forgejo            # upstream release line
+    ours:   rezus/forgejo-16         # our superset (GitHub default)
+    tags:   derive                   # v16.0.2 → v16.0.2-rezus.N (deliberate cuts)
+    transport: plugin                # harmostes mode:mapping
+
+versioning:
+  # #627: identity = highest upstream v16.0.* release reachable
+  # from rezus/forgejo-16 (exact major.minor.patch mapping).
+  upstream_pattern: "v16.0.*"
+  tag_pattern: "v*-rezus.*"
+release:
+  # #627 contract: tags mirror upstream exactly; -rezus.NN counts
+  # addon builds on top and RESETS at every upstream change. The
+  # walk mints right after a validated push (same semantics as
+  # sync mode's auto.release). Downgrade to "label-pr" for a
+  # deliberate-cut flow, "none" for describe-only.
+  auto_cut: true
+
+# Shared per-fork knowledge (used by backport + validation docs):
+patches:
+  - file: go.mod
+    description: "staging module require+replace (k8s-style monorepo: client-go + fj)"
+    signature: "forgejo.org/client-go => ./staging/src/forgejo.org/client-go"
+additive_paths:
+  - staging/
+  - cmd/fj/
+  - charts/forgejo.rezuscloud/
+  - distributions/
+
+# Validation reference (the fork repo's .github/fork/sync-validate.sh
+# owns the executable copy):
+validation:
+  go_build:
+    - module: staging/src/forgejo.org/client-go
+      packages: [./...]
+    - module: staging/src/forgejo.org/fj
+      packages: [./...]
+    - module: .
+      packages: [./cmd/fj]
+  signatures:
+    - "go.mod: forgejo.org/client-go => ./staging/src/forgejo.org/client-go"
+    - "go.mod: forgejo.org/fj => ./staging/src/forgejo.org/fj"

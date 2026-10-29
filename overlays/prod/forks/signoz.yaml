@@ -1,0 +1,82 @@
+# Fork definition for SigNoz — consumed by sync-fork.sh.
+name: signoz
+
+upstream:
+  url: https://github.com/SigNoz/signoz
+  branch: main
+
+fork:
+  url: https://github.com/rezuscloud/signoz
+  default_branch: rezus/main
+  # Dedicated mirror branch (rezuscloud/signoz PRs #53+#55): `main`
+  # would collide with upstream's own push-triggered CI (cacheci,
+  # build-staging — GitHub evaluates push workflows from the pushed
+  # ref, and the mirror always carries upstream's files). Same
+  # pattern as forgejo mirroring into v16.0/forgejo.
+  mirror_branch: rezus/mirror-main
+  platform: github          # github | forgejo — where the fork repo lives
+  token_env: GITHUB_TOKEN   # env var holding the host PAT
+
+versioning:
+  tag_pattern: "v*-rezus.*"
+
+patches:
+  - file: pkg/prometheus/label.go
+    description: "RemoveExtraLabels String type fix"
+    signature: "case promql.String:"
+  - file: pkg/query-service/app/querier/querier.go
+    description: "Cache empty series on ctx cancellation"
+    signature: "if ctx.Err() != nil {"
+  - file: pkg/query-service/app/metrics/v4/helpers/sub_query.go
+    description: "Temporality filter fallback"
+    signature: "temporality IN"
+  # B1 (resolved 2026-06-27): upstream #11798 migrated the AuthZ
+  # interface to *RoleWithTransactionGroups. Our community openfga
+  # provider keeps its store-backed delegation by extracting the
+  # embedded *Role and delegating to RoleStore.
+  - file: pkg/authz/openfgaauthz/provider.go
+    description: "Community store-backed role CRUD (Create/Update) against the RoleWithTransactionGroups interface"
+    signature: "provider.store.Create(ctx, role.Role)"
+
+# Permanent divergence: ee/ directory is deleted (community-only
+# build). cmd/enterprise is the EE entrypoint — it imports ee/*
+# packages, so it must be stripped too.
+deletions:
+  - ee/
+  - cmd/enterprise
+
+additive_paths:
+  - pkg/licensing/communitylicensing/
+  - deploy/charts/signoz-community/
+  - .github/workflows/gor-signoz-community.yaml
+
+post_merge_hook: post-merge-hooks/signoz.sh
+
+# Full automation (opt-in): merge the sync PR the moment every
+# gate is green (the centralized gates ARE the CI) and cut the
+# next release tag. The deliberate-landing exception (2026-09-20)
+# ended with the 0.139 upgrade merged by hand (PR #57) and
+# verified — standing operator direction: no intervention needed
+# when CI is green.
+auto:
+  merge: true
+  release: true
+
+release:
+  dockerfiles: [cmd/query-service/Dockerfile]
+  multi_arch: [linux/amd64]
+  image_registry: ghcr.io/rezuscloud/signoz
+  build_cli: false
+  version_file: false
+
+# Validation (per-fork, declarative): build the community edition
+# entrypoint. (The chart's ee/ stripping happens in
+# post-merge-hooks/signoz.sh.)
+validation:
+  # Toolchain: signoz pins sonic v1.14.1 which reaches into Go
+  # internals; build with the go.mod-declared Go (1.25.x).
+  toolchain:
+    go: "1.25.7"
+  go_build:
+    - module: .
+      packages: [./cmd/community]
