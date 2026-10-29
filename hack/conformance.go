@@ -107,13 +107,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "conformance: harmostes.dev/v1alpha1 not served by the pinned CRDs: %v\n", err)
 		os.Exit(1)
 	}
-	gvrFor := func(kind string) (schema.GroupVersionResource, error) {
+	gvrFor := func(kind string) (schema.GroupVersionResource, bool, error) {
 		for _, r := range resources.APIResources {
 			if r.Kind == kind {
-				return schema.GroupVersionResource{Group: "harmostes.dev", Version: "v1alpha1", Resource: r.Name}, nil
+				return schema.GroupVersionResource{Group: "harmostes.dev", Version: "v1alpha1", Resource: r.Name}, r.Namespaced, nil
 			}
 		}
-		return schema.GroupVersionResource{}, fmt.Errorf("kind %q not served", kind)
+		return schema.GroupVersionResource{}, false, fmt.Errorf("kind %q not served", kind)
 	}
 
 	files := []string{}
@@ -188,13 +188,21 @@ func main() {
 				failures++
 				continue
 			}
-			gvr, err := gvrFor(u.GetKind())
+			gvr, namespaced, err := gvrFor(u.GetKind())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "FAIL %s doc %d: %v — is the pinned chart's CRD set current?\n", f, i+1, err)
 				failures++
 				continue
 			}
-			if _, err := dyn.Resource(gvr).Namespace(u.GetNamespace()).Create(context.Background(), u, metav1.CreateOptions{FieldValidation: metav1.FieldValidationStrict}); err != nil {
+			ns := u.GetNamespace()
+			// A namespaced object with no namespace builds the path
+			// /namespaces//<res> — a 404 that looks like a missing CRD
+			// (hit on the first cluster-scoped-metadata template CR).
+			// envtest carries "default" — use it.
+			if ns == "" && namespaced {
+				ns = "default"
+			}
+			if _, err := dyn.Resource(gvr).Namespace(ns).Create(context.Background(), u, metav1.CreateOptions{FieldValidation: metav1.FieldValidationStrict}); err != nil {
 				body, _ := json.Marshal(u.Object)
 				fmt.Fprintf(os.Stderr, "FAIL %s doc %d (%s %s): %v\n%s\n", f, i+1, u.GetKind(), u.GetName(), err, snippet(string(body)))
 				failures++
