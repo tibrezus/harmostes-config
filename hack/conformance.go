@@ -4,8 +4,9 @@
 // surface — ADR-0011 amendment; no kernel conformance artifact exists).
 //
 // Usage (CI): go run ./hack/conformance -crds <dir> -objects <dir>...
-//   -crds     directory of harmostes CRD yamls (extracted from the pinned chart)
-//   -objects  one or more directories of rendered YAML (kustomize build out)
+//
+//	-crds     directory of harmostes CRD yamls (extracted from the pinned chart)
+//	-objects  one or more directories of rendered YAML (kustomize build out)
 //
 // Every document must be either empty or a harmostes.dev CR that the
 // apiserver accepts. A document that fails (unknown field, bad enum,
@@ -24,6 +25,7 @@ import (
 	"sort"
 	"strings"
 
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -32,7 +34,6 @@ import (
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"gopkg.in/yaml.v3"
 )
 
 // docsOf splits a possibly multi-doc YAML file into individual documents.
@@ -196,7 +197,7 @@ func main() {
 				// file name, mounted at /workspace/forks by the pool). These are
 				// config-tier content; anything else here is k8s-config sprawl
 				// and stays refused.
-				if u.GetKind() == "ConfigMap" && allowedPlainConfigMaps[u.GetName()] {
+				if _, ok := allowedPlainConfigMaps[u.GetName()]; u.GetKind() == "ConfigMap" && ok {
 					fmt.Printf("allow %s doc %d: ConfigMap/%s (%s)\n", f, i+1, u.GetName(), allowedPlainConfigMaps[u.GetName()])
 				} else {
 					fmt.Fprintf(os.Stderr, "FAIL %s doc %d: not a harmostes.dev object (%s) — the config tier carries harmostes CRs only\n", f, i+1, u.GetAPIVersion())
