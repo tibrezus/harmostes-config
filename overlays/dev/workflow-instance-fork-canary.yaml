@@ -1,0 +1,23 @@
+# Workflow instance: fork-maintenance — the dev canary (three-tier 3a stage 3).
+#
+# The dev engine-enablement probe: this instance runs the fork-maintenance
+# template against the `canary` fork every Monday 05:00 — and manually via
+# the UI trigger verb. Its runs exercise the payload=external posture
+# end to end: engine ConfigMaps from the TEMPLATE repo (tibrezus/
+# harmostes-template-fork-maintenance), defs from THIS config tier, the
+# chart rendering only the consumer side.
+apiVersion: harmostes.dev/v1alpha1
+kind: Workflow
+metadata:
+  name: fork-maintenance-canary
+  namespace: harmostes-dev
+  labels:
+    app.kubernetes.io/name: harmostes
+    harmostes.dev/owner: tibrez
+spec:
+  templateRef: fork-maintenance
+  source:
+    kind: schedule
+    schedule: 0 5 * * 1
+  config:
+    fork: canary

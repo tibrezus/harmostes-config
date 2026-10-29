@@ -1,0 +1,23 @@
+# Fork definition: canary — the DEV E2E fork (three-tier 3a stage 3).
+#
+# A deliberately boring fork: upstream is tiny and static, the fork is a
+# true GitHub fork (rezuscloud org — same topology as prod's dapr), no
+# patches, no release. A green run proves the DELIVERY, not the merge
+# machinery: the engine ConfigMaps mounted from the template repo
+# (forkMaintenance.payload=external), the def read from the config tier,
+# git-host resolution, and the is-ancestor no-op path end to end.
+name: canary
+
+upstream:
+  url: https://github.com/tibrezus/upstream-canary
+  branch: main
+
+fork:
+  url: https://github.com/rezuscloud/upstream-canary
+  default_branch: main
+  mirror_branch: main
+  platform: github
+  token_env: GITHUB_TOKEN
+
+versioning:
+  tag_pattern: "v*-canary.*"

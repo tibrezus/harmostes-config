@@ -3,3 +3,12 @@ kind: Kustomization
 namespace: harmostes-dev
 resources:
   - agentprofile.yaml
+  - workflow-instance-fork-canary.yaml
+generatorOptions:
+  disableNameSuffixHash: true   # fork-maintenance-defs: the pool mounts a STATIC name
+configMapGenerator:
+  # Fork DEFS are per-env DATA (config tier) — the engine payload (scripts/
+  # checks/hooks/skill) is CODE and comes from the template repo.
+  - name: fork-maintenance-defs
+    files:
+      - canary.yaml=forks/canary.yaml
