@@ -13,7 +13,10 @@ metadata:
   namespace: harmostes-dev
   labels:
     app.kubernetes.io/name: harmostes
-    harmostes.dev/owner: tibrez
+    # dev- prefix: the dev UI's header identity (X-Harmostes-Dev-User: tibrez)
+    # owns dev-<user> (#413 owner namespace) — the instance is visible and
+    # operable in the dev console by construction.
+    harmostes.dev/owner: dev-tibrez
 spec:
   templateRef: fork-maintenance
   source:
