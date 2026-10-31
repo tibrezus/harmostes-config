@@ -17,7 +17,7 @@ upstream:
 validation_command: .github/fork/sync-validate.sh
 
 fork:
-  url: https://github.com/rezuscloud/forgejo-monorepo
+  url: https://github.com/tibrezus/forgejo-monorepo
   platform: github
   token_env: GITHUB_TOKEN
 
