@@ -16,7 +16,7 @@ upstream:
   branch: 2-19-stable
 
 fork:
-  url: https://github.com/rezuscloud/semaphore-monorepo
+  url: https://github.com/tibrezus/semaphore-monorepo
   default_branch: rezus/2-19                   # release branch — GitHub default, always functional
   mirror_branch: rezus/mirror-2-19-stable      # clean upstream mirror (upstream-mirror.yml force-moves it)
   platform: github

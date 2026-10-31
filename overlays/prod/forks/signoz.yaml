@@ -6,7 +6,7 @@ upstream:
   branch: main
 
 fork:
-  url: https://github.com/rezuscloud/signoz
+  url: https://github.com/tibrezus/signoz
   default_branch: rezus/main
   # Dedicated mirror branch (rezuscloud/signoz PRs #53+#55): `main`
   # would collide with upstream's own push-triggered CI (cacheci,

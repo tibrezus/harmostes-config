@@ -16,7 +16,7 @@ upstream:
     - release-1.18
 
 fork:
-  url: https://github.com/rezuscloud/dapr
+  url: https://github.com/tibrezus/dapr
   default_branch: rezus/master   # dapr's upstream default is 'master', not 'main'
   mirror_branch: master
   platform: github          # github | forgejo — where the fork repo lives
